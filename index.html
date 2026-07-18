@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="studentApp">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Student Ledger — Claymorphism</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body ng-controller="studentCtrl">
+
+    <div class="backdrop">
+
+        <div class="app-shell">
+
+            <header class="app-header no-print">
+                <div class="title-badge">
+                    <span class="title-blob">&#9782;</span>
+                    <div>
+                        <h1>Student Ledger</h1>
+                        <p class="subtitle">Marks &middot; Grades &middot; Records</p>
+                    </div>
+                </div>
+            </header>
+
+            <nav class="clay-tabs no-print">
+                <button class="clay-tab" ng-class="{pressed: activeTab === 'dashboard'}" ng-click="setTab('dashboard')">
+                    <span class="tab-dot dot-lavender"></span> Dashboard
+                </button>
+                <button class="clay-tab" ng-class="{pressed: activeTab === 'students'}" ng-click="setTab('students')">
+                    <span class="tab-dot dot-mint"></span> Students
+                </button>
+                <button class="clay-tab" ng-class="{pressed: activeTab === 'report'}" ng-click="setTab('report')">
+                    <span class="tab-dot dot-pink"></span> Report Card
+                </button>
+                <button class="clay-tab" ng-class="{pressed: activeTab === 'calculator'}" ng-click="setTab('calculator')">
+                    <span class="tab-dot dot-sky"></span> Calculator
+                </button>
+            </nav>
+
+            <main class="app-body">
+
+                <!-- ============ DASHBOARD ============ -->
+                <section ng-if="activeTab === 'dashboard'" class="pane">
+
+                    <h2 class="pane-title">Class Overview</h2>
+
+                    <div class="orb-row">
+                        <div class="orb orb-lavender">
+                            <div class="orb-value">{{students.length}}</div>
+                            <div class="orb-label">Students</div>
+                        </div>
+                        <div class="orb orb-mint">
+                            <div class="orb-value">{{stats.average}}</div>
+                            <div class="orb-label">Average</div>
+                        </div>
+                        <div class="orb orb-peach">
+                            <div class="orb-value">{{stats.highest}}</div>
+                            <div class="orb-label">Highest</div>
+                        </div>
+                        <div class="orb orb-sky">
+                            <div class="orb-value">{{stats.lowest}}</div>
+                            <div class="orb-label">Lowest</div>
+                        </div>
+                        <div class="orb orb-pink">
+                            <div class="orb-value">{{stats.passPercent}}%</div>
+                            <div class="orb-label">Pass Rate</div>
+                        </div>
+                    </div>
+
+                    <div class="two-col" ng-if="students.length">
+                        <div class="clay-card card-lavender">
+                            <h3>Grade Distribution</h3>
+                            <div class="bars">
+                                <div class="bar-row" ng-repeat="g in gradeOrder">
+                                    <span class="bar-label grade-{{g}}">{{g}}</span>
+                                    <div class="bar-track">
+                                        <div class="bar-fill grade-fill-{{g}}" ng-style="{width: barWidth(stats.distribution[g])}"></div>
+                                    </div>
+                                    <span class="bar-count">{{stats.distribution[g]}}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="clay-card card-mint">
+                            <h3>Class Toppers</h3>
+                            <ol class="toppers">
+                                <li ng-repeat="t in stats.toppers">
+                                    <span class="rank">#{{$index + 1}}</span>
+                                    <span class="topper-name">{{t.name}}</span>
+                                    <span class="topper-marks">{{t.marks}}</span>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <p class="empty-note" ng-if="!students.length">No students yet — add one to see class statistics.</p>
+
+                </section>
+
+                <!-- ============ STUDENTS ============ -->
+                <section ng-if="activeTab === 'students'" class="pane">
+
+                    <div class="two-col-form">
+
+                        <form class="clay-card card-lavender" ng-submit="addStudent()">
+                            <h2 class="pane-title compact">{{editMode ? "Update Entry" : "New Entry"}}</h2>
+
+                            <label>Name</label>
+                            <input type="text" ng-model="entry.name" placeholder="Full name" required>
+
+                            <label>Roll No</label>
+                            <input type="text" ng-model="entry.roll" placeholder="e.g. 24" required>
+
+                            <label>Marks <span class="hint">(0&ndash;100)</span></label>
+                            <input type="number" ng-model="entry.marks" min="0" max="100" placeholder="e.g. 88" required>
+
+                            <div class="btn-row">
+                                <button type="submit" class="clay-btn btn-peach">
+                                    {{editMode ? "Update Student" : "Add Student"}}
+                                </button>
+                                <button type="button" class="clay-btn btn-ghost" ng-if="editMode" ng-click="cancelEdit()">Cancel</button>
+                            </div>
+                        </form>
+
+                        <div class="clay-card card-mint">
+                            <h3>Find &amp; Sort</h3>
+                            <label>Search</label>
+                            <input type="text" ng-model="filters.search" placeholder="Search by name or roll no">
+
+                            <label>Sort by</label>
+                            <div class="chip-row">
+                                <button type="button" class="clay-chip" ng-class="{pressed: sortKey==='name'}" ng-click="setSort('name')">Name</button>
+                                <button type="button" class="clay-chip" ng-class="{pressed: sortKey==='roll'}" ng-click="setSort('roll')">Roll No</button>
+                                <button type="button" class="clay-chip" ng-class="{pressed: sortKey==='marks'}" ng-click="setSort('marks')">Marks</button>
+                            </div>
+
+                            <button type="button" class="clay-btn btn-sky full" ng-click="exportCSV()" ng-disabled="!students.length">
+                                &#8681; Export CSV
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <h2 class="pane-title spaced">Records</h2>
+
+                    <div class="table-wrap clay-card card-flat">
+                        <table class="clay-table" ng-if="students.length">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Roll No</th>
+                                    <th>Marks</th>
+                                    <th>Grade</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="s in students | filter:filters.search | orderBy:sortKey:sortReverse track by $index">
+                                    <td>{{s.name}}</td>
+                                    <td>{{s.roll}}</td>
+                                    <td>{{s.marks}}</td>
+                                    <td>
+                                        <span class="grade-pill grade-{{gradeOf(s.marks)}}">{{gradeOf(s.marks)}}</span>
+                                    </td>
+                                    <td class="actions">
+                                        <button class="clay-icon-btn" title="Report Card" ng-click="viewReportCard(s)">&#9782;</button>
+                                        <button class="clay-icon-btn" title="Edit" ng-click="editStudent($index)">&#9998;</button>
+                                        <button class="clay-icon-btn danger" title="Delete" ng-click="removeStudent(s)">&#10006;</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p class="empty-note" ng-if="!students.length">No records yet &mdash; add your first student above.</p>
+                    </div>
+
+                    <div class="total-line" ng-if="students.length">
+                        Total Students: <strong>{{students.length}}</strong>
+                    </div>
+
+                </section>
+
+                <!-- ============ REPORT CARD ============ -->
+                <section ng-if="activeTab === 'report'" class="pane">
+
+                    <h2 class="pane-title no-print">Report Card</h2>
+
+                    <div class="clay-card card-flat no-print" ng-if="students.length">
+                        <label>Select Student</label>
+                        <select ng-model="report.selected" ng-options="s.name + ' (Roll ' + s.roll + ')' as s.name + ' (Roll ' + s.roll + ')' for s in students" ng-change="pickStudent()">
+                            <option value="">-- choose a student --</option>
+                        </select>
+                    </div>
+
+                    <p class="empty-note" ng-if="!students.length">Add students first to generate a report card.</p>
+
+                    <div class="report-card" ng-if="reportStudent">
+
+                        <div class="report-head">
+                            <div class="report-crest">&#9782;</div>
+                            <div>
+                                <h3>Certificate of Academic Record</h3>
+                                <p class="report-sub">Student Ledger &middot; Issued {{today}}</p>
+                            </div>
+                        </div>
+
+                        <div class="report-body">
+                            <div class="report-field">
+                                <span class="field-label">Name</span>
+                                <span class="field-value">{{reportStudent.name}}</span>
+                            </div>
+                            <div class="report-field">
+                                <span class="field-label">Roll No</span>
+                                <span class="field-value">{{reportStudent.roll}}</span>
+                            </div>
+                            <div class="report-field">
+                                <span class="field-label">Marks Obtained</span>
+                                <span class="field-value">{{reportStudent.marks}} / 100</span>
+                            </div>
+                            <div class="report-field">
+                                <span class="field-label">Grade</span>
+                                <span class="field-value">
+                                    <span class="grade-orb grade-{{gradeOf(reportStudent.marks)}}">{{gradeOf(reportStudent.marks)}}</span>
+                                </span>
+                            </div>
+                            <div class="report-field">
+                                <span class="field-label">Remark</span>
+                                <span class="field-value">{{remarkOf(reportStudent.marks)}}</span>
+                            </div>
+                            <div class="report-field">
+                                <span class="field-label">Class Rank</span>
+                                <span class="field-value">#{{rankOf(reportStudent)}} of {{students.length}}</span>
+                            </div>
+                        </div>
+
+                        <div class="report-foot">
+                            <span class="sign-caption">Class Teacher &middot; Ledger Office</span>
+                            <span class="verified-pill">&#10003; Verified</span>
+                        </div>
+                    </div>
+
+                    <button class="clay-btn btn-peach no-print" ng-if="reportStudent" ng-click="printReport()">&#9099; Print Report Card</button>
+
+                </section>
+
+                <!-- ============ CALCULATOR ============ -->
+                <section ng-if="activeTab === 'calculator'" class="pane calc-pane">
+
+                    <h2 class="pane-title">Desk Calculator</h2>
+
+                    <div class="calculator">
+                        <div class="calc-screen">
+                            <div class="calc-display">{{calcDisplay}}</div>
+                        </div>
+
+                        <div class="calc-grid">
+                            <button class="clay-calc-btn func" ng-click="calcClear()">AC</button>
+                            <button class="clay-calc-btn func" ng-click="calcBackspace()">&#9003;</button>
+                            <button class="clay-calc-btn func" ng-click="calcPercent()">%</button>
+                            <button class="clay-calc-btn op" ng-click="calcOperator('/')">&divide;</button>
+
+                            <button class="clay-calc-btn" ng-click="calcDigit('7')">7</button>
+                            <button class="clay-calc-btn" ng-click="calcDigit('8')">8</button>
+                            <button class="clay-calc-btn" ng-click="calcDigit('9')">9</button>
+                            <button class="clay-calc-btn op" ng-click="calcOperator('*')">&times;</button>
+
+                            <button class="clay-calc-btn" ng-click="calcDigit('4')">4</button>
+                            <button class="clay-calc-btn" ng-click="calcDigit('5')">5</button>
+                            <button class="clay-calc-btn" ng-click="calcDigit('6')">6</button>
+                            <button class="clay-calc-btn op" ng-click="calcOperator('-')">&minus;</button>
+
+                            <button class="clay-calc-btn" ng-click="calcDigit('1')">1</button>
+                            <button class="clay-calc-btn" ng-click="calcDigit('2')">2</button>
+                            <button class="clay-calc-btn" ng-click="calcDigit('3')">3</button>
+                            <button class="clay-calc-btn op" ng-click="calcOperator('+')">+</button>
+
+                            <button class="clay-calc-btn wide" ng-click="calcDigit('0')">0</button>
+                            <button class="clay-calc-btn" ng-click="calcDecimal()">.</button>
+                            <button class="clay-calc-btn eq" ng-click="calcEquals()">=</button>
+                        </div>
+
+                        <button class="clay-btn btn-ghost calc-gpa" ng-click="calcClassAverage()" ng-disabled="!students.length">
+                            Pull Class Average
+                        </button>
+                    </div>
+
+                </section>
+
+            </main>
+
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
